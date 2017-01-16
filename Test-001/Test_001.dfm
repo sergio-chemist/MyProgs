@@ -1,7 +1,7 @@
 object frmTest001: TfrmTest001
   Left = 409
   Top = 263
-  Width = 560
+  Width = 594
   Height = 450
   Caption = 'MLK Trade Test'
   Color = clBtnFace
@@ -19,14 +19,14 @@ object frmTest001: TfrmTest001
   object sbStatus: TStatusBar
     Left = 0
     Top = 372
-    Width = 544
+    Width = 578
     Height = 19
     Panels = <>
   end
   object pcPageControl: TPageControl
     Left = 0
     Top = 144
-    Width = 544
+    Width = 578
     Height = 228
     ActivePage = tsQuery
     Align = alBottom
@@ -61,10 +61,11 @@ object frmTest001: TfrmTest001
       object meQuery: TMemo
         Left = 0
         Top = 0
-        Width = 536
+        Width = 570
         Height = 200
         Align = alClient
         Color = clMenu
+        ScrollBars = ssVertical
         TabOrder = 0
       end
     end
@@ -72,7 +73,7 @@ object frmTest001: TfrmTest001
   object gbControls: TGroupBox
     Left = 0
     Top = 0
-    Width = 544
+    Width = 578
     Height = 97
     Align = alTop
     Caption = 'Controls'
@@ -197,13 +198,22 @@ object frmTest001: TfrmTest001
       Style = csDropDownList
       ItemHeight = 13
       TabOrder = 1
-      OnChange = cmbServersChange
+      OnChange = cmbQueriesChange
+    end
+    object cbxAllContents: TCheckBox
+      Left = 408
+      Top = 72
+      Width = 81
+      Height = 17
+      Caption = 'All Contents'
+      TabOrder = 2
+      OnClick = cbxAllContentsClick
     end
   end
   object sbQueries: TStatusBar
     Left = 0
     Top = 125
-    Width = 544
+    Width = 578
     Height = 19
     Panels = <>
   end
@@ -243,8 +253,8 @@ object frmTest001: TfrmTest001
     end
   end
   object aclActions: TActionList
-    Left = 484
-    Top = 57
+    Left = 388
+    Top = 97
     object acShowCoworkers: TAction
       Category = 'Task'
       Caption = 'Show Coworkers'
@@ -285,8 +295,8 @@ object frmTest001: TfrmTest001
     AfterConnect = MSConnectionAfterConnect
     OnError = MSConnectionError
     LoginPrompt = False
-    Left = 452
-    Top = 57
+    Left = 356
+    Top = 97
   end
   object msqTest: TMSQuery
     Connection = MSConnection
