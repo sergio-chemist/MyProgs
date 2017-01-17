@@ -1,6 +1,6 @@
 object frmTest001: TfrmTest001
-  Left = 409
-  Top = 263
+  Left = 564
+  Top = 267
   Width = 594
   Height = 450
   Caption = 'MLK Trade Test'
@@ -251,6 +251,13 @@ object frmTest001: TfrmTest001
         Action = acSaveAsQueries
       end
     end
+    object mnuQueries: TMenuItem
+      Caption = 'Queries'
+      object mnuEditQueries: TMenuItem
+        Caption = 'Edit ...'
+        OnClick = mnuEditQueriesClick
+      end
+    end
   end
   object aclActions: TActionList
     Left = 388
@@ -309,15 +316,15 @@ object frmTest001: TfrmTest001
     Top = 128
   end
   object dlgOpenQueries: TOpenDialog
-    DefaultExt = 'qrs'
-    Filter = 'Queries (*.qrs)|*.qrs'
+    DefaultExt = 'sql'
+    Filter = 'Queries (*.sql)|*.sql'
     Options = [ofHideReadOnly, ofFileMustExist, ofEnableSizing]
     Left = 60
     Top = 193
   end
   object dlgSaveQueries: TSaveDialog
-    DefaultExt = 'qrs'
-    Filter = 'Queries (*.qrs)|*.qrs'
+    DefaultExt = 'sql'
+    Filter = 'Queries (*.sql)|*.sql'
     Left = 140
     Top = 193
   end

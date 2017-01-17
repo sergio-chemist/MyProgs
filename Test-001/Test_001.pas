@@ -50,6 +50,8 @@ type
     acSaveAsQueries: TAction;
     mnuSaveAsQueries: TMenuItem;
     cbxAllContents: TCheckBox;
+    mnuQueries: TMenuItem;
+    mnuEditQueries: TMenuItem;
     procedure mnuExitClick(Sender: TObject);
     procedure acShowCoworkersExecute(Sender: TObject);
     procedure acConnectWithServerExecute(Sender: TObject);
@@ -64,6 +66,7 @@ type
     procedure acSaveAsQueriesExecute(Sender: TObject);
     procedure cmbQueriesChange(Sender: TObject);
     procedure cbxAllContentsClick(Sender: TObject);
+    procedure mnuEditQueriesClick(Sender: TObject);
   private
     ProgramPath: string;
     Sections, Servers, Passwords, Queries, TmpList: TStringList;
@@ -78,6 +81,7 @@ type
     procedure LoadQueries;
     procedure SaveQueries;
     procedure SaveIniFileAsQueries;
+    procedure EditQueries;
     { Private declarations }
   public
     { Public declarations }
@@ -87,12 +91,14 @@ var
   frmTest001: TfrmTest001;
 
 implementation
+uses UEditQueries;
 
 {$R *.dfm}
 
 const
   //DBParamIni = 'DbParam.ini';
   DBParamIni = 'DbPrm.ini';
+  StdSqlName = 'Queries.sql';
 
 procedure ExtractServerList(IniFile: TCustomIniFile; Servers, Passwords, Titles:
   TStrings; Login: ShortString = 'SA');
@@ -294,7 +300,7 @@ begin
   if sbQueries.SimpleText <> '' then
     dlgOpenQueries.FileName := sbQueries.SimpleText
   else
-    dlgOpenQueries.FileName := ProgramPath + 'Queries.qrs';
+    dlgOpenQueries.FileName := ProgramPath + StdSqlName;
   if dlgOpenQueries.Execute then
   begin
     meQuery.Lines.LoadFromFile(dlgOpenQueries.FileName);
@@ -307,7 +313,7 @@ begin
   if sbQueries.SimpleText <> '' then
     dlgSaveQueries.FileName := sbQueries.SimpleText
   else
-    dlgSaveQueries.FileName := ProgramPath + 'Queries.qrs';
+    dlgSaveQueries.FileName := ProgramPath + StdSqlName;
   if dlgSaveQueries.Execute then
   begin
     meQuery.Lines.SaveToFile(dlgSaveQueries.FileName);
@@ -355,6 +361,17 @@ procedure TfrmTest001.cbxAllContentsClick(Sender: TObject);
 begin
   cmbQueries.Enabled:= not cbxAllContents.Checked;
   cmbQueriesChange(Self);
+end;
+
+procedure TfrmTest001.EditQueries();
+begin
+  EditQueriesDialog(QList);
+end;
+
+
+procedure TfrmTest001.mnuEditQueriesClick(Sender: TObject);
+begin
+  EditQueries();
 end;
 
 end.
