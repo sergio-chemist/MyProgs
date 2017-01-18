@@ -82,6 +82,7 @@ type
     procedure SaveQueries;
     procedure SaveIniFileAsQueries;
     procedure EditQueries;
+    procedure AcceptQueryList(LastItem: string; LastIndex: Integer);
     { Private declarations }
   public
     { Public declarations }
@@ -91,14 +92,25 @@ var
   frmTest001: TfrmTest001;
 
 implementation
-uses UEditQueries;
+
+uses
+  UEditQueries;
 
 {$R *.dfm}
 
 const
   //DBParamIni = 'DbParam.ini';
   DBParamIni = 'DbPrm.ini';
-  StdSqlName = 'Queries.sql';
+
+procedure ClearStringsWithObjects(AStrings: TStrings);
+var
+  i: Integer;
+begin
+  for i := 0 to AStrings.Count - 1 do
+    if (AStrings.Objects[i] <> nil) then
+      AStrings.Objects[i].Free;
+  AStrings.Clear;
+end;
 
 procedure ExtractServerList(IniFile: TCustomIniFile; Servers, Passwords, Titles:
   TStrings; Login: ShortString = 'SA');
@@ -169,14 +181,16 @@ begin
       QList.AddItem(Item, TmpList);
     end;
   end;
-  QList.AssignToStrings(cmbQueries.Items);
+  ClearStringsWithObjects(cmbQueries.Items);
+  QList.AssignToStrings(cmbQueries.Items, True);
+  //QList.ExportToStrings(cmbQueries.Items);
   if QList.Count > 0 then
   begin
     cmbQueries.ItemIndex := 0;
     cmbQueriesChange(cmbQueries);
   end;  
 //  if cbxAllContents.Checked then
-//    QList.SaveToStrings(meQuery.Lines);
+//    QList.ExportToStrings(meQuery.Lines);
 end;
 
 procedure TfrmTest001.FormCreate(Sender: TObject);
@@ -193,6 +207,7 @@ end;
 
 procedure TfrmTest001.FormDestroy(Sender: TObject);
 begin
+  ClearStringsWithObjects(cmbQueries.Items);
   Sections.Free();
   TmpList.Free();
   QList.Free();
@@ -274,8 +289,9 @@ begin
       cmbServers.ItemIndex := 0;
       sbnConnect.Enabled := True;
     end;
-  end else
-  ShowStatus('[Error] File not found: ' + IniFileName);
+  end
+  else
+    ShowStatus('[Error] File not found: ' + IniFileName);
 end;
 
 procedure TfrmTest001.acGetServerListFastExecute(Sender: TObject);
@@ -303,7 +319,8 @@ begin
     dlgOpenQueries.FileName := ProgramPath + StdSqlName;
   if dlgOpenQueries.Execute then
   begin
-    meQuery.Lines.LoadFromFile(dlgOpenQueries.FileName);
+    QList.LoadFromFile(dlgOpenQueries.FileName);
+    AcceptQueryList('', -1);
     sbQueries.SimpleText := dlgOpenQueries.FileName;
   end;
 end;
@@ -343,7 +360,7 @@ var
   Index: Integer;
 begin
   if cbxAllContents.Checked then
-    QList.SaveToStrings(meQuery.Lines)
+    QList.ExportToStrings(meQuery.Lines)
   else
   begin
     Index := cmbQueries.ItemIndex;
@@ -352,22 +369,54 @@ begin
       Exit;
     Child := TStringList(Items.Objects[Index]);
     if (Child <> nil) then
-      meQuery.Lines.Assign(Child) else
+      meQuery.Lines.Assign(Child)
+    else
       meQuery.Clear;
   end;
 end;
 
 procedure TfrmTest001.cbxAllContentsClick(Sender: TObject);
 begin
-  cmbQueries.Enabled:= not cbxAllContents.Checked;
+  cmbQueries.Enabled := not cbxAllContents.Checked;
   cmbQueriesChange(Self);
 end;
 
-procedure TfrmTest001.EditQueries();
+procedure TfrmTest001.AcceptQueryList(LastItem: string; LastIndex: Integer);
 begin
-  EditQueriesDialog(QList);
+  ClearStringsWithObjects(cmbQueries.Items);
+  QList.AssignToStrings(cmbQueries.Items, True);
+  if (QList.Count > 0) then
+  begin
+    if (LastItem <> '') then
+      LastIndex := cmbQueries.Items.IndexOf(LastItem);
+    if (LastIndex < 0) then
+      LastIndex := 0;
+    cmbQueries.ItemIndex := LastIndex;
+    cmbQueriesChange(Self);
+  end
+  else
+    meQuery.Clear;
+
 end;
 
+procedure TfrmTest001.EditQueries();
+var
+  LastItem: string;
+  LastIndex: Integer;
+  IsChanged: Boolean;
+begin
+  LastIndex := cmbQueries.ItemIndex;
+  if (LastIndex >= 0) then
+    LastItem := cmbQueries.Items[LastIndex]
+  else
+    LastItem := '';
+  if EditQueriesDialog(QList, LastIndex, IsChanged) then
+  begin
+    if IsChanged then
+      LastItem := '';
+    AcceptQueryList(LastItem, LastIndex);
+  end;
+end;
 
 procedure TfrmTest001.mnuEditQueriesClick(Sender: TObject);
 begin

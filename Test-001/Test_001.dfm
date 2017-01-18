@@ -36,7 +36,7 @@ object frmTest001: TfrmTest001
       object dbgTest: TDBGridEh
         Left = 0
         Top = 0
-        Width = 536
+        Width = 570
         Height = 200
         Align = alClient
         DataSource = mdsTest

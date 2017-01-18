@@ -17,14 +17,20 @@ type
     constructor Create();
     destructor Destroy; override;
     procedure AddItem(Item: string; AStrings: TStrings);
-    procedure AssignToStrings(AStrings: TStrings);
-    procedure SaveToStrings(AStrings: TStrings);
+    procedure AssignToStrings(AStrings: TStrings; NewData: Boolean = False);
+    procedure ImportFromStrings(Source: TStrings);
+    procedure ExportToStrings(AStrings: TStrings);
     procedure SaveToStream(Stream: TStream);
+    procedure SaveToFile(const FileName: string);
+    procedure LoadFromFile(const FileName: string);
     procedure Clear;
     procedure ClearStrObjects;
   end;
 
 implementation
+
+uses
+  SysUtils, StrUtils;
 
 const
   LeftChars = '--|';
@@ -35,6 +41,18 @@ function DecorateStr(const Str: string): string;
 begin
   Result := LeftChars + Str + RightChars;
 end;
+
+function UnDecorateStr(const Str: string): string;
+begin
+  Result := Copy(Str, Length(LeftChars) + 1, Length(Str) - Length(LeftChars) -
+    Length(RightChars));
+end;
+
+function IsDecorated(const Str: string): Boolean;
+begin
+  Result := AnsiStartsStr(LeftChars, Str) and AnsiEndsStr(RightChars, Str);
+end;
+
 
 { TQueryList }
 
@@ -87,7 +105,8 @@ begin
     Child := TStringList.Create;
     Objects[Index] := Child;
   end;
-  Child.AddStrings(AStrings);
+  if (AStrings <> nil) then
+    Child.AddStrings(AStrings);
 end;
 
 function TQueryList.FindIndexOfItem(Item: string; var Index: Integer): Boolean;
@@ -101,11 +120,11 @@ var
 begin
   if not Find(Item, i) then
     //i := Add(DecorateStr(Item));
-    i:= Add(Item);
+    i := Add(Item);
   AddStringsByIndex(i, AStrings)
 end;
 
-procedure TQueryList.SaveToStrings(AStrings: TStrings);
+procedure TQueryList.ExportToStrings(AStrings: TStrings);
 var
   S: string;
 begin
@@ -118,20 +137,66 @@ begin
     AStrings.Clear;
 end;
 
-procedure TQueryList.AssignToStrings(AStrings: TStrings);
+procedure TQueryList.AssignToStrings(AStrings: TStrings; NewData: Boolean = False);
 var
   i: Integer;
+  Data: TStrings;
 begin
 //  AStrings.Assign(Self);
   AStrings.BeginUpdate;
   try
     AStrings.Clear;
-  for i := 0 to Count-1 do
+    for i := 0 to Count - 1 do
     begin
-      AStrings.AddObject(Strings[i], Objects[i]);
+      if NewData then
+      begin
+        Data := TStringList.Create;
+        Data.Assign(TStrings(Objects[i]));
+      end
+      else
+        Data := TStrings(Objects[i]);
+      AStrings.AddObject(Strings[i], Data);
     end;
   finally
     AStrings.EndUpdate;
+  end;
+end;
+
+procedure DeleteLastEmptyItems(Source: TStrings);
+var
+  i, n: Integer;
+begin
+  if Source <> nil then
+  begin
+    repeat
+      i := Source.Count - 1;
+      if (i >= 0) and (Trim(Source[i]) = '') then
+        Source.Delete(i)
+      else
+        Break;
+    until True;
+  end;
+end;
+
+procedure TQueryList.ImportFromStrings(Source: TStrings);
+var
+  i: Integer;
+  S: string;
+  Data: TStrings;
+begin
+  Clear;
+  Data := nil;
+  for i := 0 to Source.Count - 1 do
+  begin
+    S := Source[i];
+    if IsDecorated(S) then
+    begin
+      DeleteLastEmptyItems(Data);
+      Data := TStringList.Create;
+      AddObject(UnDecorateStr(S), Data);
+    end
+    else if (Data <> nil) then
+      Data.Add(S);
   end;
 end;
 
@@ -143,6 +208,31 @@ begin
   begin
     SaveToStr(S);
     Stream.Write(Pointer(S)^, Length(S));
+  end;
+end;
+
+procedure TQueryList.SaveToFile(const FileName: string);
+var
+  Stream: TStream;
+begin
+  Stream := TFileStream.Create(FileName, fmCreate);
+  try
+    SaveToStream(Stream);
+  finally
+    Stream.Free;
+  end;
+end;
+
+procedure TQueryList.LoadFromFile(const FileName: string);
+var
+  AStrings: TStrings;
+begin
+  AStrings := TStringList.Create();
+  try
+    AStrings.LoadFromFile(FileName);
+    ImportFromStrings(AStrings);
+  finally
+    AStrings.Free;
   end;
 end;
 
