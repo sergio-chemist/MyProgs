@@ -17,6 +17,7 @@ type
     constructor Create();
     destructor Destroy; override;
     procedure AddItem(Item: string; AStrings: TStrings);
+    procedure AssignFromStrings(AStrings: TStrings);
     procedure AssignToStrings(AStrings: TStrings; NewData: Boolean = False);
     procedure ImportFromStrings(Source: TStrings);
     procedure ExportToStrings(AStrings: TStrings);
@@ -160,6 +161,15 @@ begin
   finally
     AStrings.EndUpdate;
   end;
+end;
+
+procedure TQueryList.AssignFromStrings(AStrings: TStrings);
+var
+  i: Integer;
+begin
+  Clear();
+    for i := 0 to AStrings.Count - 1 do
+      AddItem(AStrings[i], TStrings(AStrings.Objects[i]));
 end;
 
 procedure DeleteLastEmptyItems(Source: TStrings);

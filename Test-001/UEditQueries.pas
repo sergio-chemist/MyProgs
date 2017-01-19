@@ -461,6 +461,7 @@ end;
 procedure TfrmEditQueries.FormCreate(Sender: TObject);
 begin
   QryList := TQueryList.Create;
+  Modal_Result := mrCancel;
 end;
 
 procedure TfrmEditQueries.FormDestroy(Sender: TObject);

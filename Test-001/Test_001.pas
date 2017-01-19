@@ -15,7 +15,7 @@ type
     mnuFile: TMenuItem;
     mnuExit: TMenuItem;
     gbControls: TGroupBox;
-    tsCoworkers: TTabSheet;
+    tsTest: TTabSheet;
     mnuTask: TMenuItem;
     mnuShowCoworkers: TMenuItem;
     aclActions: TActionList;
@@ -27,11 +27,7 @@ type
     cmbServers: TComboBox;
     mnuGetServerListFast: TMenuItem;
     acGetServerListFast: TAction;
-    lblServer: TLabel;
     lblTitle: TLabel;
-    lblPassword: TLabel;
-    lblPswdValue: TLabel;
-    lblSrvValue: TLabel;
     sbnConnect: TSpeedButton;
     dbgTest: TDBGridEh;
     msqTest: TMSQuery;
@@ -52,6 +48,11 @@ type
     cbxAllContents: TCheckBox;
     mnuQueries: TMenuItem;
     mnuEditQueries: TMenuItem;
+    mnuExecuteQuery: TMenuItem;
+    acExecQuery: TAction;
+    acEditQueries: TAction;
+    sbnExecute: TSpeedButton;
+    sbnEditQueries: TSpeedButton;
     procedure mnuExitClick(Sender: TObject);
     procedure acShowCoworkersExecute(Sender: TObject);
     procedure acConnectWithServerExecute(Sender: TObject);
@@ -66,12 +67,16 @@ type
     procedure acSaveAsQueriesExecute(Sender: TObject);
     procedure cmbQueriesChange(Sender: TObject);
     procedure cbxAllContentsClick(Sender: TObject);
-    procedure mnuEditQueriesClick(Sender: TObject);
+    procedure acExecQueryExecute(Sender: TObject);
+    procedure acEditQueriesExecute(Sender: TObject);
+    procedure sbnExecuteClick(Sender: TObject);
+    procedure sbnEditQueriesClick(Sender: TObject);
+    procedure meQueryExit(Sender: TObject);
   private
-    ProgramPath: string;
+    ProgramPath, ProgIniPath: string;
     Sections, Servers, Passwords, Queries, TmpList: TStringList;
     QList: TQueryList;
-    IniFile: TMemIniFile;
+    IniFile, ProgIniFile: TMemIniFile;
     IniFileName: string;
     procedure ShowCoworkers;
     procedure ShowStatus(Status: string; Index: Integer = -1);
@@ -83,6 +88,12 @@ type
     procedure SaveIniFileAsQueries;
     procedure EditQueries;
     procedure AcceptQueryList(LastItem: string; LastIndex: Integer);
+    procedure ExecuteQuery;
+    procedure ReadSettings;
+    procedure WriteSettings;
+    procedure CheckDBDBParamFiles;
+    procedure GetServerInfoFast;
+    procedure LoadQueryFile(FileName: TFileName);
     { Private declarations }
   public
     { Public declarations }
@@ -100,7 +111,26 @@ uses
 
 const
   //DBParamIni = 'DbParam.ini';
-  DBParamIni = 'DbPrm.ini';
+  DBParamIni: string = 'DbPrm.ini';
+  idSettings = 'Settings';
+  idDBParam = 'DBParamFile';
+  idDBServer = 'DBServer';
+  idDBQueryFile = 'DBQFile';
+  idDBQuery = 'DBQuery';
+
+type
+  TSettingsRec = record
+    DBParamFile: string;
+    QueryFile: string;
+    DBParamServer: string;
+    SelectedQuery: string;
+    DBParamFileExists: Boolean;
+    DBQueryFileExists: Boolean;
+    JustLoaded: Boolean;
+  end;
+
+var
+  Settings: TSettingsRec;
 
 procedure ClearStringsWithObjects(AStrings: TStrings);
 var
@@ -193,24 +223,73 @@ begin
 //    QList.ExportToStrings(meQuery.Lines);
 end;
 
+procedure TfrmTest001.WriteSettings();
+begin
+  with Settings do
+  begin
+    ProgIniFile.WriteString(idSettings, idDBParam, DBParamFile);
+    ProgIniFile.WriteString(idSettings, idDBServer, DBParamServer);
+    ProgIniFile.WriteString(idSettings, idDBQueryFile, QueryFile);
+    ProgIniFile.WriteString(idSettings, idDBQuery, cmbQueries.Text);
+  end;
+  ProgIniFile.UpdateFile();
+end;
+
+procedure TfrmTest001.CheckDBDBParamFiles();
+begin
+  with Settings do
+  begin
+    DBParamFileExists := (DBParamFile <> '') and FileExists(DBParamFile);
+    DBQueryFileExists := (QueryFile <> '') and FileExists(QueryFile);
+  end;
+end;
+
+procedure TfrmTest001.ReadSettings();
+begin
+  with Settings do
+  begin
+    DBParamFile := ProgIniFile.ReadString(idSettings, idDBParam, '');
+    DBParamServer := ProgIniFile.ReadString(idSettings, idDBServer, '');
+    QueryFile := ProgIniFile.ReadString(idSettings, idDBQueryFile, '');
+    SelectedQuery := ProgIniFile.ReadString(idSettings, idDBQuery, '');
+  end;
+  CheckDBDBParamFiles();
+  if Settings.DBParamFileExists then
+  begin
+    GetServerInfoFast();
+    ConnectWithServer();
+  end;
+  if Settings.DBQueryFileExists then
+  begin
+    Settings.JustLoaded := True;
+    LoadQueryFile(Settings.QueryFile);
+  end;
+end;
+
 procedure TfrmTest001.FormCreate(Sender: TObject);
 begin
   ProgramPath := ExtractFilePath(Application.ExeName);
+  ProgIniPath := ChangeFileExt(Application.ExeName, '.ini');
   Servers := TStringList.Create();
   Passwords := TStringList.Create();
   IniFile := TMemIniFile.Create('');
+  ProgIniFile := TMemIniFile.Create(ProgIniPath);
   Sections := TStringList.Create();
   TmpList := TStringList.Create();
   QList := TQueryList.Create();
+  mnuEditQueries.Caption := 'Edit ...';
   sbnConnect.Caption := '';
+  ReadSettings();
 end;
 
 procedure TfrmTest001.FormDestroy(Sender: TObject);
 begin
+  WriteSettings();
   ClearStringsWithObjects(cmbQueries.Items);
   Sections.Free();
   TmpList.Free();
   QList.Free();
+  ProgIniFile.Free;
   IniFile.Free();
   Servers.Free();
   Passwords.Free();
@@ -270,23 +349,34 @@ procedure TfrmTest001.GetServerInfo();
 begin
   if (cmbServers.ItemIndex > 0) then
   begin
-    lblSrvValue.Caption := Servers[cmbServers.ItemIndex];
-    lblPswdValue.Caption := Passwords[cmbServers.ItemIndex];
+//    lblSrvValue.Caption := Servers[cmbServers.ItemIndex];
+//    lblPswdValue.Caption := Passwords[cmbServers.ItemIndex];
+//    Settings.DBParamServer := cmbServers.Text;
+    msqTest.Close;
   end;
 end;
 
 procedure TfrmTest001.GetServerListFast();
+var
+  i: Integer;
 begin
-  IniFileName := ProgramPath + DBParamIni;
+  if Settings.DBParamFileExists then
+    IniFileName := Settings.DBParamFile
+  else
+    IniFileName := ProgramPath + DBParamIni;
   if FileExists(IniFileName) then
   begin
     Servers.LoadFromFile(IniFileName);
+    Settings.DBParamFile := IniFileName;
     IniFile.SetStrings(Servers);
     ExtractServerList(IniFile, Servers, Passwords, cmbServers.Items);
     ShowStatus('Found ' + IntToStr(Servers.Count) + ' servers');
     if (Servers.Count > 0) then
     begin
-      cmbServers.ItemIndex := 0;
+      i := cmbServers.Items.IndexOf(Settings.DBParamServer);
+      if (i < 0) then
+        i := 0;
+      cmbServers.ItemIndex := i;
       sbnConnect.Enabled := True;
     end;
   end
@@ -294,21 +384,40 @@ begin
     ShowStatus('[Error] File not found: ' + IniFileName);
 end;
 
-procedure TfrmTest001.acGetServerListFastExecute(Sender: TObject);
+procedure TfrmTest001.GetServerInfoFast();
 begin
   GetServerListFast();
   GetServerInfo();
 end;
 
+procedure TfrmTest001.acGetServerListFastExecute(Sender: TObject);
+begin
+  GetServerInfoFast();
+end;
+
 procedure TfrmTest001.cmbServersChange(Sender: TObject);
 begin
-  GetServerInfo()
+  GetServerInfo();
 end;
 
 procedure TfrmTest001.MSConnectionError(Sender: TObject; E: EDAError; var Fail: Boolean);
 begin
   ShowStatus('Connection is failed');
   Fail := False;
+end;
+
+procedure TfrmTest001.LoadQueryFile(FileName: TFileName);
+begin
+  QList.LoadFromFile(FileName);
+  if Settings.JustLoaded and (Settings.SelectedQuery <> '') then
+  begin
+    AcceptQueryList(Settings.SelectedQuery, -1);
+    Settings.JustLoaded := False;
+  end
+  else
+    AcceptQueryList('', -1);
+  Settings.QueryFile := FileName;
+  sbQueries.SimpleText := FileName;
 end;
 
 procedure TfrmTest001.LoadQueries();
@@ -318,11 +427,7 @@ begin
   else
     dlgOpenQueries.FileName := ProgramPath + StdSqlName;
   if dlgOpenQueries.Execute then
-  begin
-    QList.LoadFromFile(dlgOpenQueries.FileName);
-    AcceptQueryList('', -1);
-    sbQueries.SimpleText := dlgOpenQueries.FileName;
-  end;
+    LoadQueryFile(dlgOpenQueries.FileName);
 end;
 
 procedure TfrmTest001.SaveQueries();
@@ -372,6 +477,8 @@ begin
       meQuery.Lines.Assign(Child)
     else
       meQuery.Clear;
+    sbnExecute.Enabled := MSConnection.Connected and (meQuery.Lines.Count > 0);
+    Settings.SelectedQuery := cmbQueries.Text;
   end;
 end;
 
@@ -407,9 +514,13 @@ var
 begin
   LastIndex := cmbQueries.ItemIndex;
   if (LastIndex >= 0) then
-    LastItem := cmbQueries.Items[LastIndex]
+  begin
+    LastItem := cmbQueries.Items[LastIndex];
+    meQueryExit(Self);
+  end
   else
     LastItem := '';
+  QList.AssignFromStrings(cmbQueries.Items);
   if EditQueriesDialog(QList, LastIndex, IsChanged) then
   begin
     if IsChanged then
@@ -418,9 +529,51 @@ begin
   end;
 end;
 
-procedure TfrmTest001.mnuEditQueriesClick(Sender: TObject);
+procedure TfrmTest001.ExecuteQuery();
+begin
+  msqTest.Close;
+  msqTest.SQL.Clear;
+  msqTest.SQL.Assign(meQuery.Lines);
+  msqTest.Open;
+  msqTest.First;
+  pcPageControl.ActivePage := tsTest;
+end;
+
+procedure TfrmTest001.acExecQueryExecute(Sender: TObject);
+begin
+  ExecuteQuery();
+end;
+
+procedure TfrmTest001.acEditQueriesExecute(Sender: TObject);
 begin
   EditQueries();
+end;
+
+procedure TfrmTest001.sbnExecuteClick(Sender: TObject);
+begin
+  ExecuteQuery();
+end;
+
+procedure TfrmTest001.sbnEditQueriesClick(Sender: TObject);
+begin
+  EditQueries();
+end;
+
+procedure TfrmTest001.meQueryExit(Sender: TObject);
+var
+  Child: TStringList;
+  Items: TStrings;
+  Index: Integer;
+begin
+  begin
+    Index := cmbQueries.ItemIndex;
+    Items := cmbQueries.Items;
+    if (Index < 0) or (Index >= Items.Count) then
+      Exit;
+    Child := TStringList(Items.Objects[Index]);
+    if (Child <> nil) then
+      Child.Assign(meQuery.Lines);
+  end;
 end;
 
 end.
